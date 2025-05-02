@@ -34,7 +34,7 @@ class CSVViewerApp:
         tk.Button(search_frame, text="Load CSV", command=self.load_csv).grid(row=0, column=8)
 
         # Table
-        self.tree = ttk.Treeview(root, columns=("id", "nombres", "apellidos", "fecha_nacimiento", "fecha_registro", "ciudad", "email"), show="headings")
+        self.tree = ttk.Treeview(root, columns=("id", "nombres", "apellidos", "fecha_nacimiento", "ciudad", "fecha_registro", "email"), show="headings")
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
         self.tree.pack(fill=tk.BOTH, expand=True)
@@ -57,22 +57,30 @@ class CSVViewerApp:
 
         with open(filepath, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
+            
+            # Limpia encabezados para evitar espacios ocultos
+            reader.fieldnames = [field.strip() for field in reader.fieldnames]
+
             for row in reader:
                 try:
-                    # Validate id
+                    # Limpia claves y valores
+                    row = {k.strip(): v.strip() for k, v in row.items()}
+
+                    # Validar ID
                     row["id"] = int(row["id"])
 
-                    # Validate strings
+                    # Validar strings
                     for field in ["nombres", "apellidos", "ciudad", "email"]:
                         if not isinstance(row[field], str):
                             raise ValueError(f"{field} must be a string")
 
-                    # Validate date format MM/DD/YYYY
+                    # Validar fechas
                     row["fecha_nacimiento"] = self.validate_date(row["fecha_nacimiento"], "fecha_nacimiento")
                     row["fecha_registro"] = self.validate_date(row["fecha_registro"], "fecha_registro")
 
-                    # Calculate edad
+                    # Calcular edad
                     row["edad"] = self.calculate_age(row["fecha_nacimiento"])
+
                     self.data.append(row)
                 except Exception as e:
                     self.log(f"Invalid row skipped: {row} -> {e}")
@@ -81,28 +89,30 @@ class CSVViewerApp:
         self.log(f"CSV Loaded. {len(self.data)} valid rows displayed.")
 
     def validate_date(self, date_str, field_name):
-        try:
-            return datetime.strptime(date_str, "%m/%d/%Y")
-        except ValueError:
-            raise ValueError(f"{field_name} must be in m/d/yyyy format")
-
+        for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%d/%m/%Y"):  # acepta varios formatos
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"{field_name} must be in m/dd/yyyy, yyyy-mm-dd, or d/m/yyyy format")
+    
     def populate_table(self, rows):
         self.tree.delete(*self.tree.get_children())
         for row in rows:
             self.tree.insert("", tk.END, values=(
-            row["id"],
-            row["nombres"],
-            row["apellidos"],
-            f"{row['fecha_nacimiento'].strftime('%m/%d/%Y')} (Edad: {row['edad']})",
-            row["fecha_registro"].strftime("%m/%d/%Y"),
-            row["ciudad"],
-            row["email"]
-        ))
+                row["id"],
+                row["nombres"],
+                row["apellidos"],
+                row["fecha_nacimiento"].strftime('%m/%d/%Y'),  # Compatibilidad multiplataforma
+                row["ciudad"],
+                row["fecha_registro"].strftime('%m/%d/%Y'),
+                row["email"]
+            ))
 
 
     def calculate_age(self, birthdate):
         today = datetime.today()
-        return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+        return today.year - birthdate.year - ((today.day, today.month) < (birthdate.month, birthdate.day))
 
     def search(self):
         id_search = self.search_id.get().strip().lower()
