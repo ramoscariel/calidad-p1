@@ -1,0 +1,4 @@
+id,nombres,apellidos,fecha_nacimiento,fecha_registro,ciudad,email
+1,Juan,Perez,6/15/1995,2/12/2023,Quito,juan@example.com
+2,Ana,Lopez,11/20/1988,3/01/2022,Guayaquil,ana@correo.com
+3,Pedro,Gomez,1/10/2000,1/10/2020,Cuenca,pedro@mail.com
